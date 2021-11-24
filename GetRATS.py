@@ -41,8 +41,8 @@ gzfiles = sorted(os.listdir(default_local_target_dir))
 
 #CCMz parameters
 ccmz_url="sshstr2.ipsl.polytechnique.fr" # CCMz URL from where to download data
-ccmz_user="dgoetz" # Your login on the CCMz
-ccmz_pass="8V)H?ys4" # Your password on the CCMz
+ccmz_user="xxxxx" # Your login on the CCMz
+ccmz_pass="xxxxx" # Your password on the CCMz
 
 # ID of flights in which I'm interested in
 my_flights=['ST2_C1_16_TTL5']#,'ST2_C0_05_TTL2'] # Adapt according to your needs
