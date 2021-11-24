@@ -23,13 +23,17 @@ from datetime import datetime
 from numpy import log
 from array import *
 from os.path import exists
+import pandas as pd
+import pathlib
 
 #from EFU_HKfileprocessor import *
 
 #File names and directories
-default_local_target_dir="CCMZ_Mirror/" # directory where to store mirrored data on your local machine
-FLOATS_csv_dir = "FLOATS_C1_53/" # dir where to put processesed csv files 
-FLOATS_MCB_csv_dir = "FLOATS_C1_53/MCB/"  # dir where to put processesed MCB csv files 
+basedir = '/Users/sdavis/sd-data/projects/strateole2/C1/ST2_C1_16_TTL5'
+
+default_local_target_dir= '/Users/sdavis/sd-data/projects/strateole2/C1/CCMZ_Mirror/' # directory where to store mirrored data on your local machine
+FLOATS_csv_dir = basedir + "/FLOATS/" # dir where to put processesed csv files 
+FLOATS_MCB_csv_dir = basedir + "/FLOATS/MCB/"  # dir where to put processesed MCB csv files 
 singlescan_dir = FLOATS_csv_dir+"Single_FTR/"
 FLOATS_log_file = FLOATS_csv_dir+"FLOATS_Log.txt" #file to save log of XML messages
 ftr_file_name = FLOATS_csv_dir+"FLOATS_Raman_Master.csv"
@@ -54,7 +58,7 @@ tm_or_tc='TM'
 raw_or_processed='Processed'
 
 
-def loop_over_flights_and_instruments():
+def loop_over_flights_and_instruments(syncCCMz=True, processall=False):
     """
     Get all data from CCMz for the input list of flights/instruments
     """
@@ -62,9 +66,26 @@ def loop_over_flights_and_instruments():
         for instrument in my_instruments:
             ccmz_folder=os.path.join(flight,instrument,flight_or_test,tm_or_tc,raw_or_processed)
             #mirror_ccmz_folder(ccmz_folder)
-            new_files = mirror_ccmz_folder(instrument,ccmz_folder, show_individual_file=True)
+            
+            if syncCCMz:
+                new_files = mirror_ccmz_folder(instrument,ccmz_folder, show_individual_file=True)
+            else:
+                new_files=[]
+
+            #If we want to process all of the files (not just the newest ones that were downloaded)
+            if processall:
+                print('Attempting to process all dat.gz files in ' + os.path.join(default_local_target_dir,ccmz_folder,'*.dat.gz'))
+                new_files=glob.glob(os.path.join(default_local_target_dir,ccmz_folder,'*.dat.gz')) 
             
             if new_files != None:
+                # If we are updating the files we need to clobber all of the csv because the routines below only append to the files
+                if processall:
+                    pathlib.Path(EFU_HK_name).unlink(missing_ok=True)
+                    pathlib.Path(EFU_file_name).unlink(missing_ok=True)
+                    pathlib.Path(FLOATS_log_file).unlink(missing_ok=True)
+                    pathlib.Path(HK_file_name).unlink(missing_ok=True)
+                    pathlib.Path(ftr_file_name).unlink(missing_ok=True)
+
                 #for f in gzfiles:
                 for f in new_files:        
                     simmatch = (re.search('.ready_tm', f))  ## use with OBC simulator unpacked data
@@ -126,6 +147,19 @@ def loop_over_flights_and_instruments():
                                 mcbdate = dt_time.strftime("%m%d%Y_%H_%M_%S")
                                 MCB_file_name = "FLOATS_MCB_TM_"+mcbdate+ ".csv"
                                 parseMCBData(binPacket, MCB_file_name)
+                                
+                #Convert the csv files to html files that can be uploaded to the strat2.org webpage               
+                df = pd.read_csv(EFU_HK_name,skiprows=1)
+                sorted_df = df.sort_values(by=['Time POSIX'],ascending=False)
+                sorted_df.to_html( open(os.path.splitext(EFU_HK_name)[0]+'.html', 'w') )
+    
+                df = pd.read_csv(EFU_file_name,skiprows=1)
+                sorted_df = df.sort_values(by=['Time POSIX'],ascending=False)
+                sorted_df.to_html( open(os.path.splitext(EFU_file_name)[0]+'.html', 'w') )
+    
+                df = pd.read_csv(HK_file_name)
+                sorted_df = df.sort_values(by=['Time UNIX'],ascending=False)
+                sorted_df.to_html( open(os.path.splitext(HK_file_name)[0]+'.html', 'w') )
 
 def mirror_ccmz_folder(instrument, ccmz_folder, local_target_dir=default_local_target_dir, show_individual_file=True):
    """
@@ -662,7 +696,7 @@ def parseMCBData(data, file_name):
 # ---------------------------------------------------------------------------
 def main():
     ##To add: mirror and download CCMz data
-    loop_over_flights_and_instruments()
+    loop_over_flights_and_instruments(syncCCMz=True, processall=False)
 
 if __name__ == "__main__": 
   # calling main function 
